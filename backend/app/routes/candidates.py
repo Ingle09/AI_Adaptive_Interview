@@ -1522,6 +1522,9 @@ def update_decision(data: DecisionRequest, current_admin: dict = Depends(require
                         app = job_applications_collection.find_one({"application_id": linked_app_id})
 
             # Update job_applications_collection if app exists
+            user_reason = (data.rejection_reason or "").strip()
+            rejection_reason_val = user_reason if user_reason else None
+
             if app:
                 app_update = {
                     "decision": data.decision,
@@ -1532,12 +1535,19 @@ def update_decision(data: DecisionRequest, current_admin: dict = Depends(require
                     "last_action_at": now_iso,
                     "decision_by_name": admin_name,
                     "decision_by_role": admin_role,
+                    "decision_by_id": admin_id,
                     "decision_at": now_iso
                 }
                 if data.decision == "rejected":
-                    app_update["rejection_reason"] = data.rejection_reason or "Low Score / Did not meet criteria"
+                    app_update["rejection_reason"] = rejection_reason_val
+                    app_update["rejected_by"] = admin_name
+                    app_update["rejected_by_id"] = admin_id
+                    app_update["rejected_at"] = now_iso
                 elif data.decision in ["pending", "reconsidered", None]:
                     app_update["rejection_reason"] = None
+                    app_update["rejected_by"] = None
+                    app_update["rejected_by_id"] = None
+                    app_update["rejected_at"] = None
 
                 job_applications_collection.update_one(
                     {"_id": app["_id"]},
@@ -1555,9 +1565,15 @@ def update_decision(data: DecisionRequest, current_admin: dict = Depends(require
                 "decision_at": now_iso
             }
             if data.decision == "rejected":
-                omni_update["rejection_reason"] = data.rejection_reason or "Low Score / Did not meet criteria"
+                omni_update["rejection_reason"] = rejection_reason_val
+                omni_update["rejected_by"] = admin_name
+                omni_update["rejected_by_id"] = admin_id
+                omni_update["rejected_at"] = now_iso
             elif data.decision in ["pending", "reconsidered", None]:
                 omni_update["rejection_reason"] = None
+                omni_update["rejected_by"] = None
+                omni_update["rejected_by_id"] = None
+                omni_update["rejected_at"] = None
 
             if log and log.get("candidate_name"):
                 omni_update["candidate_name"] = log.get("candidate_name")
@@ -1582,12 +1598,19 @@ def update_decision(data: DecisionRequest, current_admin: dict = Depends(require
                     "decision": data.decision,
                     "decision_by_name": admin_name,
                     "decision_by_role": admin_role,
+                    "decision_by_id": admin_id,
                     "decision_at": now_iso
                 }
                 if data.decision == "rejected":
-                    sess_update["rejection_reason"] = data.rejection_reason or "Low Score / Did not meet criteria"
+                    sess_update["rejection_reason"] = rejection_reason_val
+                    sess_update["rejected_by"] = admin_name
+                    sess_update["rejected_by_id"] = admin_id
+                    sess_update["rejected_at"] = now_iso
                 elif data.decision in ["pending", "reconsidered", None]:
                     sess_update["rejection_reason"] = None
+                    sess_update["rejected_by"] = None
+                    sess_update["rejected_by_id"] = None
+                    sess_update["rejected_at"] = None
 
                 interview_sessions_collection.update_one(
                     {"_id": session["_id"]},
@@ -1628,6 +1651,9 @@ def update_decision(data: DecisionRequest, current_admin: dict = Depends(require
         admin_id = current_admin.get("admin_id")
         now_iso = datetime.now(timezone.utc).isoformat()
         
+        user_reason = (data.rejection_reason or "").strip()
+        rejection_reason_val = user_reason if user_reason else None
+
         # 2. Update DB
         session_update = {
             "decision": data.decision,
@@ -1637,9 +1663,17 @@ def update_decision(data: DecisionRequest, current_admin: dict = Depends(require
             "decision_at": now_iso
         }
         if data.decision == "rejected":
-            session_update["rejection_reason"] = data.rejection_reason or "Low Score / Did not meet criteria"
+            session_update["rejection_reason"] = rejection_reason_val
+            session_update["rejected_by"] = admin_name
+            session_update["rejected_by_id"] = admin_id
+            session_update["rejected_by_role"] = admin_role
+            session_update["rejected_at"] = now_iso
         elif data.decision in ["pending", "reconsidered", None]:
             session_update["rejection_reason"] = None
+            session_update["rejected_by"] = None
+            session_update["rejected_by_id"] = None
+            session_update["rejected_by_role"] = None
+            session_update["rejected_at"] = None
 
         interview_sessions_collection.update_one(
             {"link_id": data.link_id},

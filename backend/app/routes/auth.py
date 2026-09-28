@@ -422,16 +422,32 @@ def firebase_login_identifier(data: FirebaseLoginIdentifier):
         firebase_user = firebase_auth_admin.get_user(firebase_uid)
 
     except Exception as exc:
-        logger.warning(
-            "Unable to resolve Firebase account for admin: %s - %s",
-            type(exc).__name__,
-            str(exc),
-        )
+        # Fallback: try finding the account in Firebase Auth by email in case UID is out of sync
+        user_email = (user.get("email") or "").strip().lower()
+        firebase_user = None
+        if user_email:
+            try:
+                firebase_user = firebase_auth_admin.get_user_by_email(user_email)
+                # Auto-heal: update MongoDB with the real Firebase UID
+                admins_collection.update_one(
+                    {"_id": user["_id"]},
+                    {"$set": {"firebase_uid": firebase_user.uid, "firebase_email": firebase_user.email}}
+                )
+                logger.info(f"Auto-resynced firebase_uid for admin {user_email} to {firebase_user.uid}")
+            except Exception as email_exc:
+                logger.warning(f"Unable to resolve Firebase account by email {user_email}: {email_exc}")
 
-        raise HTTPException(
-            status_code=401,
-            detail="Firebase account is not available.",
-        )
+        if not firebase_user:
+            logger.warning(
+                "Unable to resolve Firebase account for admin: %s - %s",
+                type(exc).__name__,
+                str(exc),
+            )
+
+            raise HTTPException(
+                status_code=401,
+                detail="Firebase account is not available.",
+            )
 
     firebase_email = (firebase_user.email or "").strip().lower()
 

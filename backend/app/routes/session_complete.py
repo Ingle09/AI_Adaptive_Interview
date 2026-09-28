@@ -729,6 +729,40 @@ async def get_spectator_count(
     return {"link_id": link_id, "spectator_count": count}
 
 
+@router.get("/api/webrtc/ice-servers")
+@router.get("/webrtc/ice-servers")
+def get_webrtc_ice_servers():
+    """
+    Returns standard STUN and optionally TURN server configurations
+    from environment variables (TURN_SERVER_URL, TURN_USERNAME, TURN_CREDENTIAL).
+    """
+    ice_servers = [
+        {"urls": "stun:stun.l.google.com:19302"},
+        {"urls": "stun:stun1.l.google.com:19302"},
+    ]
+    turn_url = os.getenv("TURN_SERVER_URL", "").strip()
+    turn_user = os.getenv("TURN_USERNAME", "").strip()
+    turn_cred = os.getenv("TURN_CREDENTIAL", "").strip()
+
+    if turn_url:
+        turn_entry = {"urls": turn_url}
+        if turn_user:
+            turn_entry["username"] = turn_user
+        if turn_cred:
+            turn_entry["credential"] = turn_cred
+        ice_servers.append(turn_entry)
+        if "transport=tcp" not in turn_url and ("443" in turn_url or "80" in turn_url):
+            delimiter = "&" if "?" in turn_url else "?"
+            tcp_entry = {"urls": f"{turn_url}{delimiter}transport=tcp"}
+            if turn_user:
+                tcp_entry["username"] = turn_user
+            if turn_cred:
+                tcp_entry["credential"] = turn_cred
+            ice_servers.append(tcp_entry)
+
+    return {"status": "success", "ice_servers": ice_servers}
+
+
 @router.websocket("/ws/webrtc/{role}/{link_id}")
 async def webrtc_endpoint(websocket: WebSocket, role: str, link_id: str, token: Optional[str] = None):
     import os, tempfile

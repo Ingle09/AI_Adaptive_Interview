@@ -1099,12 +1099,26 @@ export default function CandidateDialog({ candidate, open, onOpenChange, onStatu
                           {isQualified ? 'Ready for Technical Round / Hiring' : 'Does not meet required threshold'}
                         </span>
                       </div>
-                      {c?.decision === 'rejected' && c?.rejection_reason && (
+                      {c?.decision === 'rejected' && (
                         <div className="mb-3 p-3 bg-rose-500/10 dark:bg-rose-500/15 border border-rose-200 dark:border-rose-900/60 rounded-xl flex items-start gap-2.5">
                           <AlertCircle className="h-4 w-4 text-rose-500 shrink-0 mt-0.5" />
-                          <div>
-                            <span className="text-xs font-bold text-rose-700 dark:text-rose-400">Recorded Rejection Reason:</span>
-                            <p className="text-xs text-rose-800 dark:text-rose-200 font-medium mt-0.5">{c.rejection_reason}</p>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-bold text-rose-700 dark:text-rose-400">Rejection Details:</span>
+                              {(c.rejected_at || c.decision_at) && (
+                                <span className="text-[11px] font-semibold text-rose-600/80 dark:text-rose-300">
+                                  {new Date(c.rejected_at || c.decision_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-rose-800 dark:text-rose-200 font-medium mt-1">
+                              <span className="font-semibold">Reason:</span> {(c.rejection_reason && c.rejection_reason.trim() !== 'Low Score / Did not meet criteria') ? c.rejection_reason.trim() : "Not specified"}
+                            </p>
+                            {(c.rejected_by || c.decision_by_name) && (
+                              <p className="text-[11px] text-rose-700/80 dark:text-rose-300 font-medium mt-0.5">
+                                <span className="font-semibold">Rejected by:</span> {c.rejected_by || c.decision_by_name}
+                              </p>
+                            )}
                           </div>
                         </div>
                       )}
@@ -1620,7 +1634,7 @@ export default function CandidateDialog({ candidate, open, onOpenChange, onStatu
                       </div>
                     </div>
                     {recordingUrl ? (
-                      <video controls className="w-full rounded-lg border border-slate-200 bg-black" src={recordingUrl}>
+                      <video controls className="w-full aspect-video object-contain rounded-lg border border-slate-200 bg-black" src={recordingUrl}>
                         Your browser does not support video.
                       </video>
                     ) : (
@@ -1639,7 +1653,7 @@ export default function CandidateDialog({ candidate, open, onOpenChange, onStatu
                       </div>
                     </div>
                     {screenRecordingUrl ? (
-                      <video controls className="w-full rounded-lg border border-slate-200 bg-black" src={screenRecordingUrl}>
+                      <video controls className="w-full aspect-video object-contain rounded-lg border border-slate-200 bg-black" src={screenRecordingUrl}>
                         Your browser does not support video.
                       </video>
                     ) : (

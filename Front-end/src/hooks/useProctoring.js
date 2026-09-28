@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-// ── Tunable thresholds ──────────────────────────────────────────────────
-const DETECT_INTERVAL_MS = 700          // how often a frame is sent to the worker
 
-const PHONE_ALERT_CONFIDENCE = 0.55     // raised to eliminate false positives
-const PHONE_CONSECUTIVE_FRAMES = 2      // 2 consecutive frames (~1.4s) for very fast detection
+// ── Tunable thresholds (Env-configurable with optimized defaults) ────────
+const DETECT_INTERVAL_MS = Number(import.meta.env?.VITE_PROCTORING_INTERVAL_MS) || 400          // frame cadence
+const PHONE_ALERT_CONFIDENCE = Number(import.meta.env?.VITE_PROCTORING_PHONE_CONFIDENCE) || 0.42 // balanced for hand-held phone detection
+const PHONE_CONSECUTIVE_FRAMES = 2      // 2 consecutive frames (~0.8s) for fast response
 const PHONE_COOLDOWN_MS = 5000          // 5 seconds cooldown before firing another phone alert
 
-const MULTI_FACE_CONSECUTIVE_FRAMES = 3 // 3 frames (~2.1s) before raising the alert
-const NO_FACE_CONSECUTIVE_FRAMES = 6    // ~4.2s of no face at 700ms interval
-
+const MULTI_FACE_CONSECUTIVE_FRAMES = 3 // 3 frames before raising the alert
+const NO_FACE_CONSECUTIVE_FRAMES = 6    // consecutive frames of no face
 const EYE_CONTACT_YAW_THRESHOLD = 0.40    // head turned left/right — looser to allow natural thinking
 const EYE_CONTACT_PITCH_THRESHOLD = 0.35  // head tilted up/down — looser to allow looking at screen
-const EYE_CONTACT_CONSECUTIVE_FRAMES = 8  // ~5.6s of sustained gaze-away before alerting
+const EYE_CONTACT_CONSECUTIVE_FRAMES = 8  // sustained gaze-away before alerting
 
 const DEFAULT_MAX_ALERTS = 3
 
@@ -74,8 +73,7 @@ export function useProctoring({
   }, [maxAlerts])
 
   const handleFrameResult = useCallback((features) => {
-    // Guard: validate the worker payload shape. The old workers/proctoring.worker.js stub
-    // sends raw landmark arrays (wrong shape) — catch it immediately so it is visible.
+    // Guard: validate the worker payload shape.
     if (typeof features?.faceCount === 'undefined') {
       console.error(
         '[useProctoring] ❌ Worker payload shape mismatch! ' +
@@ -117,7 +115,7 @@ export function useProctoring({
     }
 
     // 4. Mobile / phone detection
-    const isPhone = phoneCandidates?.length > 0 && phoneCandidates[0].score > PHONE_ALERT_CONFIDENCE
+    const isPhone = phoneCandidates?.length > 0 && phoneCandidates[0].score >= PHONE_ALERT_CONFIDENCE
     streak.phone = isPhone ? streak.phone + 1 : 0
     if (streak.phone >= PHONE_CONSECUTIVE_FRAMES) {
       const now = Date.now()
@@ -133,7 +131,7 @@ export function useProctoring({
       faceCount,
       faceVisible,
       multiFace: isMultiFace,
-      phoneDetected: isPhone,  // isPhone is the variable declared above
+      phoneDetected: isPhone,
       eyeContactLost,
       jawOpenScore,
     }))
@@ -185,8 +183,6 @@ export function useProctoring({
 
     intervalRef.current = setInterval(async () => {
       // Pause frame capture when the tab is backgrounded.
-      // The tab-switch detector (in useInterviewSession) already logs this as
-      // a violation — no need to waste CPU on ML inference while invisible.
       if (document.visibilityState !== 'visible') return
 
       const video = videoRef?.current
@@ -195,7 +191,10 @@ export function useProctoring({
       if (inFlightRef.current) return // skip tick if previous frame hasn't returned yet
 
       try {
-        const bitmap = await createImageBitmap(video)
+        // Downscale frame to 480x360 for fast CPU inference; fallback to full frame if unsupported
+        const bitmap = await createImageBitmap(video, { resizeWidth: 480, resizeHeight: 360, resizeQuality: 'low' })
+          .catch(() => createImageBitmap(video))
+
         inFlightRef.current = true
         worker.postMessage({ type: 'detect', data: { bitmap, timestamp: Date.now() } }, [bitmap])
       } catch (e) {
