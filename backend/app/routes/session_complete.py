@@ -162,13 +162,21 @@ def complete_session(
         }
         if session:
             violations = session.get("violations", [])
+            existing_integrity = session.get("integrity") or {}
             if violations:
                 if update_data["integrity"]["total_tab_switches"] == 0:
                     update_data["integrity"]["total_tab_switches"] = sum(1 for v in violations if v.get("type") == "tab_switch")
                 if update_data["integrity"]["total_face_alerts"] == 0:
-                    update_data["integrity"]["total_face_alerts"] = sum(1 for v in violations if v.get("type") not in ("tab_switch", "noise_alert"))
+                    update_data["integrity"]["total_face_alerts"] = sum(1 for v in violations if v.get("type") not in ("tab_switch", "noise_alert", "background_noise", "noise"))
                 if update_data["integrity"]["total_noise_alerts"] == 0:
-                    update_data["integrity"]["total_noise_alerts"] = sum(1 for v in violations if v.get("type") == "noise_alert")
+                    update_data["integrity"]["total_noise_alerts"] = sum(1 for v in violations if v.get("type") in ("noise_alert", "background_noise", "noise"))
+
+            if update_data["integrity"]["total_tab_switches"] == 0 and existing_integrity.get("total_tab_switches"):
+                update_data["integrity"]["total_tab_switches"] = existing_integrity.get("total_tab_switches")
+            if update_data["integrity"]["total_face_alerts"] == 0 and existing_integrity.get("total_face_alerts"):
+                update_data["integrity"]["total_face_alerts"] = existing_integrity.get("total_face_alerts")
+            if update_data["integrity"]["total_noise_alerts"] == 0 and existing_integrity.get("total_noise_alerts"):
+                update_data["integrity"]["total_noise_alerts"] = existing_integrity.get("total_noise_alerts")
             
             candidate_id = session.get("candidate_id")
             if candidate_id and not candidate_id.endswith("IQ"):

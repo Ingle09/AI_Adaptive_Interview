@@ -84,12 +84,20 @@ export function useProctoring({
       return
     }
 
-    const { faceCount, secondaryFaceWidths, headYaw, headPitch, phoneCandidates, jawOpenScore } = features
+    const { faceCount, secondaryFaceWidths, primaryFaceWidth, headYaw, headPitch, phoneCandidates, jawOpenScore } = features
     const streak = streakRef.current
 
     // 1 + 2. Face detection / multi-face detection
     const faceVisible = faceCount > 0
-    const isMultiFace = faceCount > 1 || (secondaryFaceWidths?.length ?? 0) > 0
+
+    // Filter secondary face widths: ignore tiny background noise, wall posters, shadows, or reflections
+    const validSecondaryFaces = (secondaryFaceWidths || []).filter((w) => {
+      const isSignificantWidth = w >= 0.10
+      const isSignificantRatio = primaryFaceWidth ? (w / primaryFaceWidth) >= 0.35 : true
+      return isSignificantWidth && isSignificantRatio
+    })
+
+    const isMultiFace = validSecondaryFaces.length > 0 || (faceCount > 1 && validSecondaryFaces.length > 0)
 
     streak.noFace = !faceVisible ? streak.noFace + 1 : 0
     if (streak.noFace >= NO_FACE_CONSECUTIVE_FRAMES) {
@@ -270,7 +278,7 @@ export function useProctoring({
 
   // 5. Lip sync: compare mouth-openness against expected speaking activity.
   const checkLipSync = useCallback((jawOpenScore, isAudioActive, threshold = 0.12) => {
-    return !!isAudioActive && jawOpenScore < threshold
+    return Boolean(isAudioActive) && Number(jawOpenScore ?? 0) < threshold
   }, [])
 
   return {

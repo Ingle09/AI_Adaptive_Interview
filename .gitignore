@@ -121,3 +121,5 @@ backend/temp_uploads/
 temp_uploads/
 backend/error_log.txt
 backend/token_tracker.json
+backend/firebase_credentials.json
+backend/firebase_credentials.json
