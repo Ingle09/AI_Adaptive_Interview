@@ -1617,7 +1617,7 @@ export const useInterviewSession = (sessionId, interviewType, startRoundTwo) => 
       if (globalFaceAlertsRef.current >= 20) {
         Swal.fire({
           title: 'Interview Terminated',
-          text: `Your interview has been automatically submitted because you exceeded the maximum allowed face alerts (20). Last alert reason: ${type}`,
+          text: 'Your interview was automatically submitted after reaching the maximum limit of 20 face-detection alerts.',
           icon: 'error',
           background: '#161c2d',
           color: '#fff',

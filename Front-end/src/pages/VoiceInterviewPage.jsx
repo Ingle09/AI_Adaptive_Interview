@@ -2256,10 +2256,14 @@ export default function VoiceInterviewPage() {
       activeAudioRef.current = null;
     }
 
-    const type = interviewType
+    const type = interviewType || sessionDetailRef.current?.interview_type || 'Technical'
+    const itypeLower = String(type).trim().toLowerCase()
     const iid = interviewIdRef.current
 
-    if (type === 'Technical' || type === 'Non-Technical') {
+    const isNonTech = itypeLower.includes('case') || itypeLower.includes('non-tech') || itypeLower.includes('non_tech') || itypeLower.includes('non technical')
+    const isTech = !isNonTech && (itypeLower.includes('tech') || itypeLower.includes('coding'))
+
+    if (isTech || isNonTech) {
       setAiStatus('thinking')
       setLoading(true) // Immediately show loading state to candidate
       const t = VOICE_TRANSLATIONS[languageRef.current] || VOICE_TRANSLATIONS['English']
@@ -2270,7 +2274,7 @@ export default function VoiceInterviewPage() {
         speak(t.verbalComplete, resolve)
       })
 
-      if (type === 'Technical') {
+      if (isTech) {
         try {
           const fetchPromise = candidateFetch(`${API_BASE_URL}/coding-round/start`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2449,19 +2453,8 @@ export default function VoiceInterviewPage() {
     setSecurityAlert(displayMsg)
     securityAlertTimerRef.current = setTimeout(() => setSecurityAlert(''), 4500)
 
-      const isFaceAlert = ['multi_person', 'no_face', 'phone', 'eye_contact'].includes(alertType)
-      if (isFaceAlert) {
-        integrityMetricsRef.current.faceAlerts += 1
-      } else if (alertType === 'tab_switch') {
-        integrityMetricsRef.current.tabSwitches += 1
-      } else if (alertType === 'fullscreen_exit') {
-        integrityMetricsRef.current.fullscreenExits += 1
-      } else if (alertType === 'background_noise') {
-        integrityMetricsRef.current.noiseAlerts += 1
-      }
-  
-      setWarningsCount(p => {
-        const newCount = isFaceAlert ? p + 1 : p
+    setWarningsCount(p => {
+      const newCount = isFaceAlert ? p + 1 : p
         warningsCountRef.current = newCount
         setProctoringState(prev => ({ ...prev, lastAlertType: alertType }))
 
@@ -2894,6 +2887,11 @@ export default function VoiceInterviewPage() {
   // RENDER — delegate to sub-components for coding/case study
   // ─────────────────────────────────────────────────────────────────────────────
 
+  const itypeLower = String(interviewType || sessionDetail?.interview_type || 'Technical').trim().toLowerCase()
+  const isNonTechRound = itypeLower.includes('case') || itypeLower.includes('non-tech') || itypeLower.includes('non_tech') || itypeLower.includes('non technical')
+  const isTechRound = !isNonTechRound && (itypeLower.includes('tech') || itypeLower.includes('coding'))
+  const hasSecondRound = isTechRound || isNonTechRound
+
   const candidateVideoElement = (
     <>
       <ProctoringAlerts
@@ -3133,16 +3131,27 @@ export default function VoiceInterviewPage() {
           <span>The interview will submit automatically when the timer reaches zero.</span>
         </div>
 
-        {/* Disabled submit button — visible but not actionable, to signal intent is clear */}
-        <button
-          disabled
-          onClick={(e) => { e.preventDefault(); return; }}
-          className="px-8 py-3 rounded-2xl bg-slate-800 text-slate-600 border border-white/6 text-sm font-bold cursor-not-allowed flex items-center gap-2"
-          title="Submission is locked until the timer reaches zero"
-        >
-          <i className="fas fa-lock" />
-          Submit Locked — Timer Running
-        </button>
+        {/* Action Button: Proceed to Round 2 if available, otherwise display waiting state */}
+        {hasSecondRound ? (
+          <button
+            type="button"
+            onClick={() => transitionToNextRound()}
+            className="px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/30 hover:scale-105 transition-all flex items-center gap-2.5 cursor-pointer"
+          >
+            <i className={`fas ${isTechRound ? 'fa-code' : 'fa-chart-pie'}`} />
+            <span>{isTechRound ? '🚀 Switch to Coding Round (Round 2) →' : '📊 Switch to Case Study (Round 2) →'}</span>
+          </button>
+        ) : (
+          <button
+            disabled
+            onClick={(e) => { e.preventDefault(); return; }}
+            className="px-8 py-3 rounded-2xl bg-slate-800 text-slate-600 border border-white/6 text-sm font-bold cursor-not-allowed flex items-center gap-2"
+            title="Submission is locked until the timer reaches zero"
+          >
+            <i className="fas fa-lock" />
+            Submit Locked — Timer Running
+          </button>
+        )}
       </div>
 
       {/* Hidden video for AI Proctoring — must stay visible for MediaPipe frame decoding */}
@@ -3563,10 +3572,37 @@ export default function VoiceInterviewPage() {
           </div>
           <span className="font-black tracking-tight">HireIQ <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 font-medium">Voice AI</span></span>
           <span className="ml-2 text-xs font-semibold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2.5 py-0.5 uppercase tracking-widest">
-            <i className="fas fa-comments mr-1" />Round 1: Verbal
+            <i className="fas fa-comments mr-1" />
+            {hasSecondRound ? (isTechRound ? 'Round 1: Verbal (Coding Next)' : 'Round 1: Verbal (Case Study Next)') : 'Round 1: Verbal'}
           </span>
         </div>
         <div className="flex items-center gap-3">
+          {hasSecondRound && (
+            <button
+              type="button"
+              onClick={() => {
+                Swal.fire({
+                  title: isTechRound ? 'Switch to Coding Round?' : 'Switch to Case Study Round?',
+                  text: isTechRound 
+                    ? 'Are you ready to finish the verbal round and proceed to the Coding Challenge (Round 2)?' 
+                    : 'Are you ready to finish the verbal round and proceed to the Case Study (Round 2)?',
+                  icon: 'question',
+                  showCancelButton: true,
+                  confirmButtonColor: '#4f46e5',
+                  cancelButtonColor: '#334155',
+                  confirmButtonText: isTechRound ? 'Yes, Switch to Coding' : 'Yes, Switch to Case Study',
+                  background: '#161c2d',
+                  color: '#fff',
+                }).then((r) => {
+                  if (r.isConfirmed) transitionToNextRound()
+                })
+              }}
+              className="px-3.5 py-1.5 rounded-full text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-md shadow-indigo-500/20 flex items-center gap-1.5 transition-all hover:scale-105 cursor-pointer"
+            >
+              <i className={`fas ${isTechRound ? 'fa-code' : 'fa-chart-pie'}`} />
+              <span>{isTechRound ? 'Switch to Coding Round →' : 'Switch to Case Study →'}</span>
+            </button>
+          )}
           <div className={`text-sm font-mono font-bold px-4 py-1.5 rounded-full border ${countdown < 300 ? 'border-rose-500/50 text-rose-400 bg-rose-500/10' : 'border-indigo-500/30 text-indigo-300 bg-indigo-500/10'}`}>
             <i className="fas fa-clock mr-2" />{fmt(countdown)}
           </div>
@@ -3657,7 +3693,7 @@ export default function VoiceInterviewPage() {
         <div className="flex-1" />
 
         {/* Bottom controls */}
-        <div className="w-full max-w-lg space-y-4 shrink-0 mt-6">
+        <div className="w-full max-w-xl space-y-4 shrink-0 mt-6">
           <div className="flex gap-2">
             <button onClick={async () => {
               if (isTransitioningRef.current) return
@@ -3681,6 +3717,35 @@ export default function VoiceInterviewPage() {
               <i className={`fas ${aiStatus === 'listening' ? 'fa-stop-circle' : 'fa-microphone'} text-base`} />
               {aiStatus === 'listening' ? 'Done Speaking' : 'Speak Answer'}
             </button>
+
+            {hasSecondRound && (
+              <button
+                type="button"
+                onClick={() => {
+                  Swal.fire({
+                    title: isTechRound ? 'Switch to Coding Round?' : 'Switch to Case Study Round?',
+                    text: isTechRound 
+                      ? 'Are you ready to finish the verbal round and proceed to the Coding Challenge (Round 2)?' 
+                      : 'Are you ready to finish the verbal round and proceed to the Case Study (Round 2)?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#4f46e5',
+                    cancelButtonColor: '#334155',
+                    confirmButtonText: isTechRound ? 'Yes, Switch to Coding' : 'Yes, Switch to Case Study',
+                    background: '#161c2d',
+                    color: '#fff',
+                  }).then((r) => {
+                    if (r.isConfirmed) transitionToNextRound()
+                  })
+                }}
+                className="px-5 py-3.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-600/30 hover:-translate-y-0.5 cursor-pointer whitespace-nowrap"
+                title={isTechRound ? 'Switch to Coding Round' : 'Switch to Case Study'}
+              >
+                <i className={`fas ${isTechRound ? 'fa-code' : 'fa-chart-pie'}`} />
+                <span>{isTechRound ? 'Switch to Coding' : 'Switch to Case Study'}</span>
+              </button>
+            )}
+
             <button
               onClick={handleFinishEarly}
               className="px-6 py-3.5 rounded-2xl text-xs font-bold transition-all uppercase tracking-widest bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20"
