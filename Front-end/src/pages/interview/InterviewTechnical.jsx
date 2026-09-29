@@ -1731,22 +1731,12 @@ export const InterviewTechnical = () => {
                       </button>
                     )
                   ) : (
-                    <>
-                      <button
-                        className="px-8 py-3.5 rounded-xl font-bold text-sm text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all duration-200 cursor-pointer border-none"
-                        onClick={handleNextQuestion}
-                      >
-                        Next &rarr;
-                      </button>
-                      {!isRoundTwo && sessionDetail?.interview_type !== 'Normal' && (
-                        <button
-                          onClick={handleStartRound2Click}
-                          className="px-5 py-3.5 rounded-xl font-bold text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 shadow-sm transition-all duration-200 cursor-pointer flex items-center gap-1.5"
-                        >
-                          🚀 Switch to Coding Round
-                        </button>
-                      )}
-                    </>
+                    <button
+                      className="px-8 py-3.5 rounded-xl font-bold text-sm text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all duration-200 cursor-pointer border-none"
+                      onClick={handleNextQuestion}
+                    >
+                      Next &rarr;
+                    </button>
                   )}
                 </div>
               </>

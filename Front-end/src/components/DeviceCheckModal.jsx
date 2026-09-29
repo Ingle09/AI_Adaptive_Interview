@@ -212,8 +212,8 @@ const DeviceCheckModal = ({ onSuccess, onCancel }) => {
         </div>
 
         <div 
-          className="relative w-full shrink-0 h-40 sm:h-44 bg-black rounded-xl overflow-hidden flex items-center justify-center border border-white/10"
-          style={{ backgroundColor: '#000000', maxHeight: '180px' }}
+          className="relative w-full shrink-0 h-48 sm:h-52 bg-black rounded-xl overflow-hidden flex items-center justify-center border border-white/10"
+          style={{ backgroundColor: '#000000', maxHeight: '230px' }}
         >
           {error ? (
             <div className="text-center p-4">

@@ -492,11 +492,26 @@ async def superadmin_dashboard(
 ):
     if current_admin.get("role") not in ["super_admin", "master"]:
         raise HTTPException(status_code=403, detail="Super Admin access required")
-    return await get_dashboard_aggregated_data(
-        admin_id=adminId,
-        summary_only=summary_only,
-        current_admin=current_admin,
-    )
+    try:
+        return await get_dashboard_aggregated_data(
+            admin_id=adminId,
+            summary_only=summary_only,
+            current_admin=current_admin,
+        )
+    except Exception as e:
+        logger.error(f"[superadmin_dashboard] Error aggregating dashboard: {e}", exc_info=True)
+        return {
+            "dbStats": {},
+            "candidates": [],
+            "omni_stats": {"status": "unavailable", "error": str(e)},
+            "liveSessions": [],
+            "ongoingMonitoredCount": 0,
+            "ongoingLiveCount": 0,
+            "ongoingAlertCount": 0,
+            "ongoingSpeakingCount": 0,
+            "ongoingCodingCount": 0,
+            "creditRequests": []
+        }
 
 
 @router.get("/api/superadmin/recruitment-funnel")
