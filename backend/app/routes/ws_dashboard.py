@@ -153,6 +153,14 @@ async def get_dashboard_aggregated_data(
             "is_deactivated": 1,
             "company_id": 1,
             "created_by": 1,
+            "talent_pool_status": 1,
+            "rejection_reason": 1,
+            "decision_at": 1,
+            "rejected_at": 1,
+            "decision_by_name": 1,
+            "rejected_by": 1,
+            "last_action_by_name": 1,
+            "admin_name": 1,
         }
         
         def _load_dashboard_candidates():
@@ -245,6 +253,7 @@ async def get_dashboard_aggregated_data(
                 "avg_score": score,
                 "created_at": app.get("applied_at") or app.get("updated_at") or datetime.now(timezone.utc).isoformat(),
                 "decision": app.get("decision") or "selected",
+                "talent_pool_status": app.get("talent_pool_status"),
                 "status": "completed",
                 "application_id": app_id,
                 "is_deactivated": False

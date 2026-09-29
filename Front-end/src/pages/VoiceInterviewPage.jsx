@@ -1566,7 +1566,7 @@ export default function VoiceInterviewPage() {
           resolveWhisperStopRef.current = resolve
         })
 
-        // ── RMS analyser: track peak loudness so we can skip /stt on silence ──
+        // 🎙️ Dynamic Endpointing (VAD): Wait for natural pauses before flushing audio 🎙️
         let rmsAnalyserCleanup = null
         try {
           const rmsCtx = new (window.AudioContext || window.webkitAudioContext)()
@@ -1576,7 +1576,16 @@ export default function VoiceInterviewPage() {
           src.connect(analyser)
           const buf = new Float32Array(analyser.fftSize)
           let rafId = 0
-          let lastSilenceReset = 0
+          
+          // VAD Configuration Constants
+          const VAD_SPEECH_THRESHOLD = 0.015 // Threshold for speech vs silence
+          const VAD_SILENCE_MS = 1200        // Flush after 1.2s of continuous silence
+          const VAD_MAX_CHUNK_MS = 14000     // Force flush at 14s to prevent giant chunks
+          
+          let chunkStartTime = Date.now()
+          let lastSpeechTime = Date.now()
+          let hasSpokenInChunk = false
+
           const tickRms = () => {
             analyser.getFloatTimeDomainData(buf)
             let sumSq = 0
@@ -1588,7 +1597,11 @@ export default function VoiceInterviewPage() {
             window.dispatchEvent(new CustomEvent('candidate_audio_rms', { detail: rms }))
 
             const now = Date.now()
-            if (rms > CHUNK_SEND_RMS_THRESHOLD && now - lastSilenceReset > 500) {
+            const chunkDuration = now - chunkStartTime
+
+            if (rms > VAD_SPEECH_THRESHOLD) {
+              lastSpeechTime = now
+              hasSpokenInChunk = true
               hasSpokenThisSessionRef.current = true
               lastCandidateVoiceTimeRef.current = now
               lastSilenceReset = now
@@ -1614,6 +1627,19 @@ export default function VoiceInterviewPage() {
               voiceNoiseCooldownRef.current = now + 8000
               voiceNoiseFrameCountRef.current = 0
               logProctoringAlert('noise_alert', 'Continuous background noise detected')
+            }
+
+            const silenceDuration = now - lastSpeechTime
+            const shouldFlush = 
+              (hasSpokenInChunk && silenceDuration > VAD_SILENCE_MS) ||
+              (chunkDuration > VAD_MAX_CHUNK_MS) ||
+              (!hasSpokenInChunk && chunkDuration > 5000)
+
+            if (shouldFlush) {
+              if (whisperRecorderRef.current && whisperRecorderRef.current.state === 'recording') {
+                try { whisperRecorderRef.current.stop() } catch (_) { }
+              }
+              return // Exit the loop, mr.onstop will spin up a new recorder
             }
 
             rafId = requestAnimationFrame(tickRms)
@@ -1670,14 +1696,8 @@ export default function VoiceInterviewPage() {
             }
           }
         }
-        mr.start(3000)
-        whisperFlushTimerRef.current = setInterval(() => {
-          if (whisperRecorderRef.current && whisperRecorderRef.current.state === 'recording') {
-            try {
-              whisperRecorderRef.current.stop()
-            } catch (_) { }
-          }
-        }, 3000)
+        // Start recorder dynamically. The VAD logic (tickRms) will call .stop() automatically.
+        mr.start()
       } catch (err) {
         console.warn('Failed to start Whisper chunk recorder:', err)
         resolveWhisperStopRef.current?.()
@@ -2429,10 +2449,21 @@ export default function VoiceInterviewPage() {
     setSecurityAlert(displayMsg)
     securityAlertTimerRef.current = setTimeout(() => setSecurityAlert(''), 4500)
 
-    setWarningsCount(p => {
-      const newCount = p + 1
-      warningsCountRef.current = newCount
-      setProctoringState(prev => ({ ...prev, lastAlertType: alertType }))
+      const isFaceAlert = ['multi_person', 'no_face', 'phone', 'eye_contact'].includes(alertType)
+      if (isFaceAlert) {
+        integrityMetricsRef.current.faceAlerts += 1
+      } else if (alertType === 'tab_switch') {
+        integrityMetricsRef.current.tabSwitches += 1
+      } else if (alertType === 'fullscreen_exit') {
+        integrityMetricsRef.current.fullscreenExits += 1
+      } else if (alertType === 'background_noise') {
+        integrityMetricsRef.current.noiseAlerts += 1
+      }
+  
+      setWarningsCount(p => {
+        const newCount = isFaceAlert ? p + 1 : p
+        warningsCountRef.current = newCount
+        setProctoringState(prev => ({ ...prev, lastAlertType: alertType }))
 
       const ts = new Date().toISOString()
 
@@ -2511,35 +2542,45 @@ export default function VoiceInterviewPage() {
   }, [handleScreenShareViolation])
 
   useEffect(() => {
-    // Tab switch counter — auto-end after 3 switches
-    let tabSwitchCount = 0
-    const MAX_TAB_SWITCHES = 3
+    // Tab switch / focus loss counter — auto-end after 3 strikes
+    let focusLossCount = 0
+    const MAX_FOCUS_LOSSES = 3
+    let isFocusLossModalOpen = false
 
-    // Tab switch detection
-    const handleVisibilityChange = () => {
-      if (document.hidden && round !== 'done' && round !== 'intro' && round !== 'pre_checks' && round !== 'submitting') {
-        tabSwitchCount++
-        logProctoringAlert('tab_switch', `Tab switch #${tabSwitchCount}`)
+    // Strict Focus Loss detection (handles both tab switching and clicking other apps/split-screen)
+    const handleFocusLoss = (e) => {
+      // Prevent double counting if both blur and visibilitychange fire closely
+      if (isFocusLossModalOpen) return
+      
+      const isHidden = e.type === 'visibilitychange' && document.hidden
+      const isBlurred = e.type === 'blur'
 
-        if (tabSwitchCount >= MAX_TAB_SWITCHES) {
-          // Auto-end interview after too many tab switches
+      if ((isHidden || isBlurred) && round !== 'done' && round !== 'intro' && round !== 'pre_checks' && round !== 'submitting') {
+        focusLossCount++
+        isFocusLossModalOpen = true
+        logProctoringAlert('tab_switch', `Focus loss #${focusLossCount}`)
+
+        if (focusLossCount > MAX_FOCUS_LOSSES) {
+          // Auto-end interview after too many violations
           Swal.fire({
             icon: 'error',
             title: '🚨 Interview Terminated!',
-            text: `You have switched tabs ${MAX_TAB_SWITCHES} times. The interview has been automatically ended and saved.`,
+            text: `You have exceeded the maximum allowed background activity violations. The interview has been automatically ended and saved.`,
             confirmButtonColor: '#ef4444',
             confirmButtonText: 'OK',
             allowOutsideClick: false,
-          }).then(() => completeInterview({ isTimeout: true, reason: 'Terminated due to multiple tab switching violations.' }))
+          }).then(() => completeInterview({ isTimeout: true, reason: 'Terminated due to multiple tab switching or background app usage.' }))
         } else {
           Swal.fire({
             icon: 'warning',
-            title: `⚠️ Tab Switch Detected! (${tabSwitchCount}/${MAX_TAB_SWITCHES})`,
-            text: `Please do not switch tabs or minimize the window. You have ${MAX_TAB_SWITCHES - tabSwitchCount} warning(s) remaining before the interview is automatically ended.`,
+            title: `⚠️ Background Activity Detected! (${focusLossCount}/${MAX_FOCUS_LOSSES})`,
+            text: `Please do not switch tabs, click outside the window, or use other applications. You have ${MAX_FOCUS_LOSSES - focusLossCount} warning(s) remaining before the interview is automatically ended.`,
             confirmButtonColor: '#ef4444',
             confirmButtonText: 'I Understand',
             timer: 8000,
             timerProgressBar: true,
+          }).then(() => {
+            isFocusLossModalOpen = false
           })
         }
       }
@@ -2572,14 +2613,16 @@ export default function VoiceInterviewPage() {
       }
     }
 
-    document.addEventListener('visibilitychange', handleVisibilityChange)
+    document.addEventListener('visibilitychange', handleFocusLoss)
+    window.addEventListener('blur', handleFocusLoss)
     document.addEventListener('fullscreenchange', handleFullscreenChange)
 
     return () => {
       // NOTE: We DO NOT call window.speechSynthesis?.cancel() here anymore.
       // This cleanup function was accidentally getting triggered whenever a proctoring
       // alert changed the completeInterview or logProctoringAlert reference, muting the AI.
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      document.removeEventListener('visibilitychange', handleFocusLoss)
+      window.removeEventListener('blur', handleFocusLoss)
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
     }
     // We intentionally omit logProctoringAlert and completeInterview to prevent re-bind loops muting the AI.
@@ -2590,7 +2633,7 @@ export default function VoiceInterviewPage() {
   const proctoring = useProctoring({
     videoRef: candidateVideoRef,
     enabled: round !== 'done' && round !== 'pre_checks' && round !== 'intro' && round !== 'submitting',
-    maxAlerts: 30,
+    maxAlerts: 20,
     onViolation: (v) => {
       logProctoringAlert(v.type, v.message)
     },
