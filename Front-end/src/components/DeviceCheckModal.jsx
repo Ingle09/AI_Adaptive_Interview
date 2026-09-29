@@ -199,10 +199,10 @@ const DeviceCheckModal = ({ onSuccess, onCancel }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0f1e]/90 backdrop-blur-sm p-4 overflow-y-auto">
       <div 
-        className="bg-[#161c2d] border rounded-2xl shadow-2xl max-w-2xl w-full p-6 sm:p-8 text-white relative overflow-y-auto max-h-[94vh] my-auto flex flex-col justify-between"
+        className="bg-[#161c2d] border rounded-2xl shadow-2xl max-w-2xl w-full p-6 sm:p-7 text-white relative overflow-y-auto max-h-[92vh] my-auto flex flex-col gap-3.5"
         style={{ backgroundColor: '#161c2d', borderColor: 'rgba(255,255,255,0.1)', color: '#ffffff' }}
       >
-        <div className="mb-4 text-center">
+        <div className="mb-2 text-center">
           <h2 className="text-2xl font-bold mb-2">Hardware Check</h2>
           <p className="text-slate-400 text-sm mb-3">Let's make sure your camera and microphone are working properly before we begin.</p>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full text-xs font-medium text-blue-400">
@@ -211,7 +211,10 @@ const DeviceCheckModal = ({ onSuccess, onCancel }) => {
           </div>
         </div>
 
-        <div className="relative w-full aspect-video max-h-[38vh] bg-black rounded-3xl overflow-hidden mb-5 flex items-center justify-center">
+        <div 
+          className="relative w-full shrink-0 h-56 sm:h-64 bg-black rounded-2xl overflow-hidden mb-2 flex items-center justify-center border border-white/10"
+          style={{ backgroundColor: '#000000', minHeight: '224px' }}
+        >
           {error ? (
             <div className="text-center p-6">
               <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
@@ -302,9 +305,15 @@ const DeviceCheckModal = ({ onSuccess, onCancel }) => {
           </p>
 
           {!hasEnvironmentVerified ? (
-            <div className="bg-[#0f172a] rounded-xl p-3.5 border border-white/5">
+            <div 
+              className="rounded-xl p-4 border"
+              style={{ backgroundColor: '#0f172a', borderColor: 'rgba(255, 255, 255, 0.1)', color: '#ffffff' }}
+            >
               {env.hasMultipleTabs && (
-                <div className="p-3.5 mb-3 bg-red-500/15 border border-red-500/40 rounded-xl text-xs text-red-200 flex items-start gap-2.5 shadow-lg shadow-red-500/10">
+                <div 
+                  className="p-3.5 mb-3 rounded-xl text-xs flex items-start gap-2.5 shadow-lg"
+                  style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fecaca' }}
+                >
                   <i className="fas fa-window-restore text-red-400 text-sm mt-0.5 flex-shrink-0 animate-bounce"></i>
                   <div className="flex-1">
                     <p className="font-bold text-red-100 text-sm">Background Chrome Tabs Detected!</p>
@@ -319,18 +328,18 @@ const DeviceCheckModal = ({ onSuccess, onCancel }) => {
               )}
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="text-xs text-slate-300 space-y-1">
+                <div className="text-xs space-y-2 font-medium" style={{ color: '#e2e8f0' }}>
                   <div className="flex items-center gap-2">
-                    <i className="fas fa-ban text-red-400"></i>
-                    <span>Close <strong>ALL other applications</strong> running on your computer</span>
+                    <i className="fas fa-ban text-red-400 shrink-0"></i>
+                    <span>Close <strong className="text-white font-bold">ALL other applications</strong> running on your computer</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <i className="fas fa-window-restore text-slate-400"></i>
+                    <i className="fas fa-window-restore text-indigo-400 shrink-0"></i>
                     <span>Close all other Chrome tabs and windows</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <i className="fas fa-bell-slash text-slate-400"></i>
-                    <span>Press <kbd className="px-1.5 py-0.5 bg-black/60 rounded border border-white/10 font-mono text-[10px] text-white">Win + N</kbd> to turn on <strong>Do Not Disturb</strong></span>
+                    <i className="fas fa-bell-slash text-amber-400 shrink-0"></i>
+                    <span>Press <kbd className="px-1.5 py-0.5 bg-black/80 rounded border border-white/20 font-mono text-[10px] text-white font-bold shadow-sm">Win + N</kbd> to turn on <strong className="text-white font-bold">Do Not Disturb</strong></span>
                   </div>
                 </div>
 
@@ -338,12 +347,12 @@ const DeviceCheckModal = ({ onSuccess, onCancel }) => {
                   type="button"
                   onClick={env.startIsolationTest}
                   disabled={env.isTesting || env.hasMultipleTabs}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 ${
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 ${
                     env.isTesting
                       ? 'bg-indigo-600/50 text-indigo-200 cursor-wait'
                       : env.hasMultipleTabs
                         ? 'bg-red-500/20 text-red-300 cursor-not-allowed border border-red-500/30'
-                        : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 hover:-translate-y-0.5 cursor-pointer'
+                        : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 hover:-translate-y-0.5 cursor-pointer'
                   }`}
                 >
                   {env.isTesting ? (
@@ -366,7 +375,10 @@ const DeviceCheckModal = ({ onSuccess, onCancel }) => {
               </div>
 
               {env.failureReason && !env.isTesting && !env.hasMultipleTabs && (
-                <div className="mt-3 p-2.5 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-300 flex items-center justify-between">
+                <div 
+                  className="mt-3 p-2.5 rounded-lg text-xs flex items-center justify-between"
+                  style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5' }}
+                >
                   <span>⚠️ {env.failureReason}</span>
                   <button
                     type="button"
@@ -379,9 +391,12 @@ const DeviceCheckModal = ({ onSuccess, onCancel }) => {
               )}
             </div>
           ) : (
-            <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-300 flex items-center gap-2">
-              <i className="fas fa-check-circle text-emerald-400"></i>
-              <span>Fullscreen focus verified. All external tabs, apps, and notifications are isolated.</span>
+            <div 
+              className="p-3 rounded-xl text-xs flex items-center gap-2.5 border"
+              style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.25)', color: '#34d399' }}
+            >
+              <i className="fas fa-check-circle text-emerald-400 text-sm"></i>
+              <span><strong className="text-white font-semibold">Fullscreen focus verified.</strong> All external tabs, apps, and notifications are isolated.</span>
             </div>
           )}
         </div>
