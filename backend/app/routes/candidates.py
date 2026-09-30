@@ -2744,7 +2744,7 @@ Return this EXACT JSON (all score fields are integers 0-100, weighted_total is t
                 from groq import Groq
                 client = Groq(api_key=groq_key.strip())
                 response = client.chat.completions.create(
-                    model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
+                    model=os.getenv("GROQ_MODEL", "llama3-8b-8192"),
                     messages=[
                         {"role": "system", "content": "You are a precise ATS scoring engine. Return ONLY valid JSON. No markdown. Be extremely fast and concise."},
                         {"role": "user", "content": prompt}

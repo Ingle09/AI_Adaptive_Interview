@@ -3374,38 +3374,6 @@ export default function VoiceInterviewPage() {
               {aiStatus === 'listening' ? 'Done Speaking' : 'Speak Answer'}
             </button>
 
-            {hasSecondRound && (
-              <button
-                type="button"
-                onClick={() => {
-                  stopAudio()
-                  Swal.fire({
-                    title: isTechRound ? 'Switch to Coding Round?' : 'Switch to Case Study Round?',
-                    text: isTechRound 
-                      ? 'Are you ready to finish the verbal round and proceed to the Coding Challenge (Round 2)?' 
-                      : 'Are you ready to finish the verbal round and proceed to the Case Study (Round 2)?',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonColor: '#4f46e5',
-                    cancelButtonColor: '#334155',
-                    confirmButtonText: isTechRound ? 'Yes, Switch to Coding' : 'Yes, Switch to Case Study',
-                    background: '#161c2d',
-                    color: '#fff',
-                  }).then((r) => {
-                    if (r.isConfirmed) {
-                      stopAudio()
-                      transitionToNextRound()
-                    }
-                  })
-                }}
-                className="px-5 py-3.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-600/30 hover:-translate-y-0.5 cursor-pointer whitespace-nowrap"
-                title={isTechRound ? 'Switch to Coding Round' : 'Switch to Case Study'}
-              >
-                <i className={`fas ${isTechRound ? 'fa-code' : 'fa-chart-pie'}`} />
-                <span>{isTechRound ? 'Switch to Coding' : 'Switch to Case Study'}</span>
-              </button>
-            )}
-
             <button
               onClick={() => {
                 stopAudio()
