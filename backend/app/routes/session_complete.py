@@ -164,12 +164,18 @@ def complete_session(
             violations = session.get("violations", [])
             existing_integrity = session.get("integrity") or {}
             if violations:
+                tab_switch_types = {
+                    "tab_switch", "screen_casting", "screen_share_detected", 
+                    "screen_recording", "screenshare_stopped", "multiple_displays", 
+                    "multi_monitor", "fullscreen_exit", "window_blur"
+                }
+                noise_types = {"noise_alert", "background_noise", "noise"}
                 if update_data["integrity"]["total_tab_switches"] == 0:
-                    update_data["integrity"]["total_tab_switches"] = sum(1 for v in violations if v.get("type") == "tab_switch")
+                    update_data["integrity"]["total_tab_switches"] = sum(1 for v in violations if v.get("type") in tab_switch_types)
                 if update_data["integrity"]["total_face_alerts"] == 0:
-                    update_data["integrity"]["total_face_alerts"] = sum(1 for v in violations if v.get("type") not in ("tab_switch", "noise_alert", "background_noise", "noise"))
+                    update_data["integrity"]["total_face_alerts"] = sum(1 for v in violations if v.get("type") not in tab_switch_types and v.get("type") not in noise_types)
                 if update_data["integrity"]["total_noise_alerts"] == 0:
-                    update_data["integrity"]["total_noise_alerts"] = sum(1 for v in violations if v.get("type") in ("noise_alert", "background_noise", "noise"))
+                    update_data["integrity"]["total_noise_alerts"] = sum(1 for v in violations if v.get("type") in noise_types)
 
             if update_data["integrity"]["total_tab_switches"] == 0 and existing_integrity.get("total_tab_switches"):
                 update_data["integrity"]["total_tab_switches"] = existing_integrity.get("total_tab_switches")
