@@ -875,7 +875,7 @@ async def get_metered_ice_servers() -> list:
         os.getenv("METERED_DOMAIN")
         or os.getenv("metered_domain")
         or "hireiq.metered.live"
-    ).strip()
+    ).strip().replace("https://", "").replace("http://", "").strip("/")
 
     # Support raw JSON secret strings from AWS Secrets Manager
     if not metered_api_key:
@@ -897,7 +897,7 @@ async def get_metered_ice_servers() -> list:
                             parsed.get("METERED_DOMAIN")
                             or parsed.get("metered_domain")
                             or metered_domain
-                        ).strip()
+                        ).strip().replace("https://", "").replace("http://", "").strip("/")
                         if metered_api_key:
                             break
                 except Exception:
@@ -944,8 +944,21 @@ async def get_webrtc_ice_servers(raw: bool = False):
     """
     Returns dynamic STUN and TURN server configurations.
     Uses TURN credentials from environment / Secrets Manager, or dynamic Metered API if configured.
+    Guarantees robust Google STUN is always included to prevent ICE gathering failures.
     """
-    ice_servers = await get_metered_ice_servers()
+    raw_ice = await get_metered_ice_servers()
+    
+    # Ensure high-availability STUN is always present alongside TURN
+    ice_servers = [
+        {"urls": "stun:stun.l.google.com:19302"},
+        {"urls": "stun:stun1.l.google.com:19302"},
+    ]
+    for s in raw_ice:
+        # Don't add duplicate google stuns
+        urls = s.get("urls", "")
+        if "google.com" not in (urls if isinstance(urls, str) else " ".join(urls)):
+            ice_servers.append(s)
+
     has_turn = any("turn:" in s.get("urls", "") or "turns:" in s.get("urls", "") for s in ice_servers)
     logger.info(f"[/api/webrtc/ice-servers] Served {len(ice_servers)} ICE servers (TURN active: {has_turn})")
     if raw:

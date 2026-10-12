@@ -50,6 +50,7 @@ export const useInterviewSession = (sessionId, interviewType, startRoundTwo) => 
   const [error, setError] = useState(null)
   const [scheduledStart, setScheduledStart] = useState(null)
   const [isCompleted, setIsCompleted] = useState(false)
+  const [isAlreadyCompleted, setIsAlreadyCompleted] = useState(false)
   const _sessionKey = sessionId ? `interview_session_${sessionId}` : null
   const _savedSession = _sessionKey ? (() => { try { return JSON.parse(sessionStorage.getItem(_sessionKey) || 'null') } catch { return null } })() : null
 
@@ -726,6 +727,7 @@ export const useInterviewSession = (sessionId, interviewType, startRoundTwo) => 
       // completed screen immediately without waiting for the API round-trip.
       try {
         if (sessionStorage.getItem(`interview_done_${sessionId}`) === '1') {
+          setIsAlreadyCompleted(true)
           setIsCompleted(true)
           setLoading(false)
           return
@@ -759,6 +761,7 @@ export const useInterviewSession = (sessionId, interviewType, startRoundTwo) => 
           throw new Error(`This interview is scheduled to start on ${startTime.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' })}. Please try again at the scheduled time.`)
         }
         if (payload.session_status === 'completed') {
+          setIsAlreadyCompleted(true)
           setIsCompleted(true)
           setLoading(false)
           return
@@ -782,6 +785,7 @@ export const useInterviewSession = (sessionId, interviewType, startRoundTwo) => 
           throw new Error("This interview session is scheduled for a future time window.")
         }
         if (startPayload.session_status === 'completed') {
+          setIsAlreadyCompleted(true)
           setIsCompleted(true)
           setLoading(false)
           return
@@ -2446,6 +2450,7 @@ export const useInterviewSession = (sessionId, interviewType, startRoundTwo) => 
     isSpeechRecordingRef,
     interimTranscriptText,
     isCompleted,
+    isAlreadyCompleted,
     scheduledStart,
     isOnline
   }
