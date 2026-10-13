@@ -320,8 +320,8 @@ def _call_groq(
 ) -> str:
     """Call Groq API (completions) with active model and automatic fallback on decommissioned models."""
     url = "https://api.groq.com/openai/v1/chat/completions"
-    active_model = model or os.getenv("GROQ_MODEL", "llama3-8b-8192")
-    fallback_models = ["llama3-8b-8192", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+    active_model = model or os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+    fallback_models = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"]
     
     max_attempts = groq_key_manager.get_total_keys() or 1
     last_error_text = ""
