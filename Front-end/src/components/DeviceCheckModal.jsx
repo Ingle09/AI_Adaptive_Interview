@@ -549,6 +549,9 @@ const DeviceCheckModal = ({ onSuccess, onCancel }) => {
                         <span className="bg-amber-500/30 text-amber-200 font-bold px-1.5 py-0.5 rounded text-[9px] border border-amber-400/30">Step 2</span>
                         <span>Open & double-click <code className="text-amber-300 font-mono font-bold bg-black/60 px-1 py-0.5 rounded">hireiq-agent.exe</code></span>
                       </div>
+                      <p className="mt-1 text-[9px] text-amber-300/70 font-sans">
+                        💡 If Chrome warns "Suspicious download blocked": Click download details (arrow) → select "Download suspicious file" / "Keep anyway"
+                      </p>
                     </div>
                   ) : (
                     <div className="mt-2.5 p-2 rounded-lg bg-black/40 border border-amber-500/25 text-[10px]">
